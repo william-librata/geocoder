@@ -1,12 +1,6 @@
 -- cleanup
-DROP FUNCTION IF EXISTS geocode(address);
-DROP TYPE IF EXISTS parsed_address;
-
--- create type
-CREATE TYPE parsed_address
-AS
+DROP FUNCTION IF EXISTS geocode
 (
-    address_id VARCHAR,
     house VARCHAR,
     category VARCHAR,
     near VARCHAR,
@@ -26,39 +20,75 @@ AS
     state VARCHAR,
     country_region VARCHAR,
     country VARCHAR,
-    world_region VARCHAR,
-    latitude VARCHAR,
-    longitude VARCHAR
+    world_region VARCHAR
+);
+DROP TYPE IF EXISTS geocode_result;
+
+-- create type
+CREATE TYPE geocode_result
+AS
+(
+    address_detail_id VARCHAR,
+    latitude NUMERIC(10, 8),
+    longitude NUMERIC(11, 8)
 );
 
 -- main
-CREATE OR REPLACE FUNCTION geocode(parsed_address parsed_address)
-    RETURNS parsed_address
+CREATE OR REPLACE FUNCTION geocode
+(
+    house VARCHAR,
+    category VARCHAR,
+    near VARCHAR,
+    street_number VARCHAR,
+    road VARCHAR,
+    unit VARCHAR,
+    level VARCHAR,
+    staircase VARCHAR,
+    entrance VARCHAR,
+    po_box VARCHAR,
+    pcode VARCHAR,
+    suburb VARCHAR,
+    city_district VARCHAR,
+    city VARCHAR,
+    island VARCHAR,
+    state_district VARCHAR,
+    state_name VARCHAR,
+    country_region VARCHAR,
+    country VARCHAR,
+    world_region VARCHAR
+)
+RETURNS TABLE
+(
+    address_detail_pid VARCHAR,
+    latitude NUMERIC(10, 8),
+    longitude NUMERIC(11, 8)
+)
 AS
 $function$
-DECLARE
-    result parsed_address;
 
 BEGIN
-    result = geocode_exact_match(parsed_address);
-    RETURN result;
+    RETURN QUERY
+    SELECT a.address_detail_pid, a.latitude, a.longitude
+    FROM address a
+    WHERE (a.flat_number_combined = unit
+            OR a.lot_number_combined = unit
+            OR unit IS NULL)
+        AND (a.level_number_combined = level
+            OR level IS NULL)
+        AND (a.house_number = street_number
+            OR a.number_first_combined = street_number
+            OR a.number_last_combined = street_number)
+        AND jarowinkler(a.street, road) >= 0.89
+        AND (a.locality_name = suburb
+            OR suburb IS NULL)
+        AND (a.state = state_name
+            OR state_name IS NULL)
+        AND (a.postcode = pcode
+            OR pcode IS NULL)
+    ORDER BY jarowinkler(a.street, road) DESC
+    LIMIT 1;
 
 END;
 $function$
 LANGUAGE plpgsql;
 
--- exact match
-CREATE OR REPLACE FUNCTION geocode_exact_match(parsed_address parsed_address)
-    RETURNS parsed_address
-AS
-BEGIN
-    UPDATE pa
-    SET
-    FROM parsed_address pa
-    JOIN
-    ;
-    RETURN parsed_address;
-
-END;
-$function$
-LANGUAGE plpgsql;

@@ -1,5 +1,25 @@
 DROP TABLE IF EXISTS address;
+DROP TABLE IF EXISTS address_site_geocode_deduped;
 
+-- deduped address_site_geocode table and pick only one point
+WITH deduped AS
+(
+    SELECT ROW_NUMBER() OVER (PARTITION BY address_site_pid ORDER BY geocode_type_code DESC) AS ranking,
+        address_site_pid, latitude, longitude
+    FROM address_site_geocode
+)
+SELECT address_site_pid, latitude, longitude
+INTO address_site_geocode_deduped
+FROM deduped
+WHERE ranking = 1;
+
+ALTER TABLE address_site_geocode_deduped ADD CONSTRAINT pk_address_address_site_geocode_deduped
+PRIMARY KEY (address_site_pid);
+
+CREATE INDEX ix__address_site_geocode_deduped__address_site_pid
+ON address_site_geocode_deduped (address_site_pid);
+
+-- denormalise address
 SELECT ad.address_detail_pid, ad.date_created, ad.date_last_modified,
 	ad.date_retired, ad.building_name,
 	ad.lot_number_prefix, ad.lot_number, ad.lot_number_suffix,
@@ -36,7 +56,7 @@ SELECT ad.address_detail_pid, ad.date_created, ad.date_last_modified,
 	ad.locality_pid, l.locality_name, s.state_abbreviation AS state,
 	ad.alias_principal, ad.postcode, ad.confidence, ad.address_site_pid,
 	ata.name AS address_type_name, asi.address_site_name,
-	ad.level_geocoded_code, ad.primary_secondary
+	ad.level_geocoded_code, ad.primary_secondary, asgd.latitude, asgd.longitude
 INTO address
 FROM address_detail ad
 LEFT JOIN street_locality sl
@@ -51,6 +71,8 @@ LEFT JOIN state s
 	ON l.state_pid = s.state_pid
 LEFT JOIN address_site asi
     ON ad.address_site_pid = asi.address_site_pid
+LEFT JOIN address_site_geocode_deduped asgd
+    ON asi.address_site_pid = asgd.address_site_pid
 LEFT JOIN address_type_aut ata
 	ON asi.address_type = ata.code;
 
