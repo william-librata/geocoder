@@ -77,8 +77,7 @@ LEFT JOIN address_type_aut ata
 	ON asi.address_type = ata.code;
 
 ALTER TABLE address ADD CONSTRAINT pk_address PRIMARY KEY (address_detail_pid);
-CREATE INDEX ix_address_covering_index_01 ON address (house_number, street, locality_name, state, postcode, flat_number, level_number, lot_number);
-CREATE INDEX ix_address_covering_index_02 ON address (house_number, street, locality_name, postcode, flat_number, level_number, lot_number);
-CREATE INDEX ix_address_covering_index_03 ON address (house_number, street, postcode, flat_number, level_number, lot_number);
-CREATE INDEX ix_address_covering_index_21 ON address (house_number, locality_name, state, postcode, flat_number, level_number, lot_number);
+CREATE INDEX ix_address_covering_index_01 ON address (house_number, street, locality_name, state, postcode, flat_number_combined, level_number_combined, lot_number_combined);
+CREATE INDEX ix_address_covering_index_02 ON address (number_first_combined, street, locality_name, state, postcode, flat_number_combined, level_number_combined, lot_number_combined);
+CREATE INDEX ix_address_covering_index_03 ON address (number_last_combined, street, locality_name, state, postcode, flat_number_combined, level_number_combined, lot_number_combined);
 
